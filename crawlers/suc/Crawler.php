@@ -1,6 +1,8 @@
 <?php
 namespace djcp\korail\crawlers\suc;
 
+use yii\helpers\Json;
+
 class Crawler extends \djcp\korail\Crawler
 {
   public $date1;
@@ -52,6 +54,40 @@ class Crawler extends \djcp\korail\Crawler
   }
 
   public function detail($callback){
+  	$p=[
+  			['name'=>'I_ZZBIDINV','value_string'=>$this->notinum],
+  			['name'=>'I_ZZSTNUM','value_string'=>$this->revision],
+  	];
+  	$fn=['ZFUNCNM'=>'ZMME_EBID_INFO_0016'];
+  	
+  	$data=$this->getDetail($p,$fn);
+  	
+  	print_r($data);
+  }
+  
+  public function getDetail(array $p,array $fn) {
+  	$p=Json::encode($p);
+  	$fn=Json::encode($fn);
+  	$result=$this->get('/gateway/gateway',['p'=>$p,'fn'=>$fn]);
+  	
+  	$itab=$result['itab'];
+  	
+  	$sucinfo=[];	//낙찰정보
+  	
+  	foreach($itab as $row) {
+  		if($row['name']=='ET_ZSMMEEBID0012') {
+  			$d=$row['value'][0];
+  			
+  			$sucinfo['result']=$d;  			
+  		}else if($row['name']=='ET_ZSMMEEBID0014') {
+  			$sucinfo['succom']=$row['value'];
+  		}else if($row['name']=='ET_ZSMMEEBID0015') {
+  			$sucinfo['multispare']=$row['value'];
+  		}else if($row['name']=='ET_ZSMMEEBID0016') {
+  			$sucinfo['selyega']=$row['value'];
+  		}
+  	}
+  	return $sucinfo;
   }
 }
 

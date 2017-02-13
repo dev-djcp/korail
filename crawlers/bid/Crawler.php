@@ -3,12 +3,18 @@ namespace djcp\korail\crawlers\bid;
 
 use yii\helpers\Json;
 
+use djcp\korail\models\BidKey;
+
 class Crawler extends \djcp\korail\Crawler
 {
   public $date1;
   public $date2;
   public $notinum;
   public $revision;
+
+	public $module;
+	private $i2_func='i2_auto_bid';
+
 
   public function getName(){
     return '코레일 입찰정보';
@@ -54,14 +60,14 @@ class Crawler extends \djcp\korail\Crawler
       break;
     case 'pur':
       $list1=$this->searchPur1();
-      $list2=$this->searchPur2();
-      $rows=array_merge($list1,$list2);
+      //$list2=$this->searchPur2();
+      $rows=array_merge($list1/*,$list2*/);
       break;
     default:
       $list1=$this->searchSer();
       $list2=$this->searchPur1();
-      $list3=$this->searchPur2();
-      $rows=array_merge($list1,$list2,$list3);
+      //$list3=$this->searchPur2();
+      $rows=array_merge($list1,$list2/*,$list3*/);
     }
     $answer=$callback($rows);
     switch($answer){
@@ -75,32 +81,30 @@ class Crawler extends \djcp\korail\Crawler
 
       // 상세가져오기
       foreach($rows as $row){
-        $p=[					  
-					'p1'=>[
-						['name'=>'I_ZBIDINV','value_string'=>$row['notinum']],
-						['name'=>'I_ZESTNUMM','value_string'=>$row['revision']],
-					],
-					'p2'=>[
-						['name'=>'I_ZZBIDINV','value_string'=>$row['notinum']],
-						['name'=>'I_ZZSTNUM','value_string'=>$row['revision']],
-					],
+        $p=[
+          ['name'=>'I_ZBIDINV','value_string'=>$this->notinum],
+          ['name'=>'I_ZESTNUMM','value_string'=>$this->revision],
         ];
+        $fn=['ZFUNCNM'=>'ZMME_EBID_INFO_0010'];
 
-        $fn=[
-					'fn1'=>[
-						['ZFUNCNM'=>'ZMME_EBID_INFO_0010'],
-					],
-					'fn2'=>[
-						['ZFUNCNM'=>'ZMME_EBID_BIDD_0009'],
-					]
-				];
-
-        $detail=$this->getDetail($p,$fn);
-
-        //입력처리
-        //
-        print_r($detail);				
-
+        list($notinum,$revision)=explode('-',$this->notinum);				
+				$data=$this->getDetail($p,$fn);
+				
+				if($data!==null) {
+					if($data['bidproc_t']=='변경공고' and intval($revision)>0) {
+						echo "-----------------bid_m \n";					
+						$this->bid_m($data);
+					}else if($data['bidproc_t']=='취소공고' and intval($revision)>0) {
+						echo "-----------------bid_c \n";
+						$this->bid_c($data);
+					}else if($data['bidproc_t']=='재공고') {
+						echo "-----------------bid_r \n";
+						$this->bid_r($data);
+					}else {					
+						echo "-----------------bid_b \n";
+						$this->bid_b($data);	
+					}
+				}	        
         sleep(1);
       }
       break;
@@ -111,15 +115,34 @@ class Crawler extends \djcp\korail\Crawler
     while(true){
       $list1=$this->searchSer();
       $list2=$this->searchPur1();
-      $list3=$this->searchPur2();
-      $rows=array_merge($list1,$list2,$list3);
+      //$list3=$this->searchPur2();
+      $rows=array_merge($list1,$list2/*,$list3*/);
       foreach($rows as $row){
         $p=[
           ['name'=>'I_ZBIDINV','value_string'=>$this->notinum],
           ['name'=>'I_ZESTNUMM','value_string'=>$this->revision],
         ];
         $fn=['ZFUNCNM'=>'ZMME_EBID_INFO_0010'];
-        // 상세가져오기
+
+				list($notinum,$revision)=explode('-',$this->notinum);				
+				// 상세가져오기
+				$data=$this->getDetail($p,$fn);
+
+				if($data!==null) {
+					if($data['bidproc_t']=='변경공고' and intval($revision)>0) {
+						echo "-----------------bid_m \n";					
+						$this->bid_m($data);
+					}else if($data['bidproc_t']=='취소공고' and intval($revision)>0) {
+						echo "-----------------bid_c \n";
+						$this->bid_c($data);
+					}else if($data['bidproc_t']=='재공고') {
+						echo "-----------------bid_r \n";
+						$this->bid_r($data);
+					}else {					
+						echo "-----------------bid_b \n";
+						$this->bid_b($data);	
+					}
+				}				
 
         $callback($row);
         sleep(1);
@@ -146,30 +169,96 @@ class Crawler extends \djcp\korail\Crawler
 		
     $license=$this->getLicense($p2,$fn2);
 		*/
-		print_r($data);
+		//print_r($data);
 		
     $answer=$callback($data);
 		switch($answer) {
     case 'n': return;
     case 'y':
 			if($data!==null) {
-				// 미입력 공고만 처리
-				list($notinum,$revision)=explode('-',$data['notinum']);
-				// 상세 가져오기
-
-				if($data['bidproc_t']=='변경공고' and $revision>1) {
+				if($data['bidproc_t']=='변경공고' and intval($revision)>0) {
+					echo "-----------------bid_m \n";					
 					$this->bid_m($data);
-				}else if($data['bidproc_t']=='취소공고' and $revision>1) {
+				}else if($data['bidproc_t']=='취소공고' and intval($revision)>0) {
+					echo "-----------------bid_c \n";
 					$this->bid_c($data);
 				}else if($data['bidproc_t']=='재공고') {
+					echo "-----------------bid_r \n";
 					$this->bid_r($data);
-				}else {
+				}else {					
+					echo "-----------------bid_b \n";
 					$this->bid_b($data);	
-				}			
+				}
 			}
 			break;
 		}
   }
+
+	public function bid_m($data) {
+		list($notinum,$revision)=explode('-',$data['notinum']);
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
+		if($bidkey!==null) {
+      list($notinum_p,$revision_p)=explode('-',$bidkey->notinum);
+			if(intval($revision_p)<intval($revision)) {
+        list($a,$b,$c,$d)=explode('-',$bidkey->bidid);
+        $b=sprintf('%02s',intval($b)+1);
+        $data['bidid']="$a-$b-$c-$d";
+        $data['bidproc']='M';
+			
+				// i2_auto_bid 호출	
+				$this->module->gman_do($this->i2_func,Json::encode($data));
+			}
+		}
+		
+	}
+	public function bid_c($data) {
+		list($notinum,$revision)=explode('-',$data['notinum']);
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
+		if($bidkey!==null and $bidkey->bidproc!='C') {
+      list($a,$b,$c,$d)=explode('-',$bidkey->bidid);
+      $b=sprintf('%02s',intval($b)+1);
+      $data['bidid']="$a-$b-$c-$d";
+      $data['bidproc']='C';
+			
+			// i2_auto_bid 호출
+			$this->module->gman_do($this->i2_func,Json::encode($data));
+		}
+		
+	}
+	public function bid_r($data) {
+		list($notinum,$revision)=explode('-',$data['notinum']);
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
+		if($bidkey!==null) {
+			list($a,$b,$c,$d)=explode('-',$bidkey->bidid);
+			if(intval($revision)>intval($c)) {
+				$b=sprintf('%02s',intval($b)+1);
+				$c=sprintf('%02s',intval($revision));
+				$data['previd']=$bidkey->bidid;
+        $data['bidid']="$a-$b-$c-$d";
+        $data['bidproc']='R';
+        $data['constnm']=$data['constnm'].'//재투찰';
+				
+				// i2_auto_bid 호출 
+				$this->module->gman_do($this->i2_func,Json::encode($data));
+			}
+		}
+
+	}
+	public function bid_b($data) {
+		list($notinum,$revision)=explode('-',$data['notinum']);
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
+		if($bidkey===null) {			
+			$data['bidid']=sprintf('%s%s-00-00-01',date('ymdHis'),str_pad(mt_rand(0,999),3,'0',STR_PAD_LEFT));
+			$data['bidproc']='B';
+			
+			// i2_auto_bid 호출
+			$this->module->gman_do($this->i2_func,Json::encode($data));		
+		}
+	}
 
   public function getDetail(array $p,array $fn){
     $p=Json::encode($p);
@@ -260,7 +349,9 @@ class Crawler extends \djcp\korail\Crawler
 				if($d['zzland5_t']!="")	$bidinfo['location']	+=pow(2,$location[$d['zzland5_t']]);
 				if($d['zzland6_t']!="")	$bidinfo['location']	+=pow(2,$location[$d['zzland6_t']]);
 
-				//
+				//state
+				$bidinfo['state']				= 'N';
+				$bidinfo['whereis']			= '52';
         //
         //
         //

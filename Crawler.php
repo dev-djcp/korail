@@ -9,12 +9,15 @@ abstract class Crawler extends \yii\base\Model
   public $proxy;
   public $mode='search';
   public $bidtype='all';
+	public $module;
 
   protected $http;
   protected $base_uri='http://ebidn.korail.com:50000';
 
   public function init(){
     parent::init();
+
+		$this->module=\djcp\korail\Module::getInstance();
 
     $this->http=new \GuzzleHttp\Client([
       'base_uri'=>$this->base_uri,

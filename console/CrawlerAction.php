@@ -36,7 +36,7 @@ class CrawlerAction extends \yii\base\Action
         foreach($data as $row){
           print_r($row);
         }
-        $answer=$this->controller->select('자료를 입력하시겠습니까?',[
+        $answer=$this->controller->select('search 자료를 입력하시겠습니까?',[
           'n'=>'작업을 취소합니다.',
           'y'=>'미입력 공고만 입력합니다.',
           'a'=>'모든 공고를 입력합니다.',
@@ -58,7 +58,7 @@ class CrawlerAction extends \yii\base\Action
     else if($this->crawler->mode==='detail'){
       $this->crawler->detail(function($data){
         print_r($data);
-        $answer=$this->controller->select('자료를 입력하시겠습니까?',[
+        $answer=$this->controller->select('detail 자료를 입력하시겠습니까?',[
           'n'=>'작업을 취소합니다.',
           'y'=>'작업을 실행합니다.',
         ]);

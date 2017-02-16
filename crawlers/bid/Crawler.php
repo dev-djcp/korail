@@ -2,7 +2,6 @@
 namespace djcp\korail\crawlers\bid;
 
 use yii\helpers\Json;
-
 use djcp\korail\models\BidKey;
 
 class Crawler extends \djcp\korail\Crawler
@@ -69,6 +68,7 @@ class Crawler extends \djcp\korail\Crawler
       //$list3=$this->searchPur2();
       $rows=array_merge($list1,$list2/*,$list3*/);
     }
+
     $answer=$callback($rows);
     switch($answer){
     case 'n': return;
@@ -78,76 +78,73 @@ class Crawler extends \djcp\korail\Crawler
       break;
     case 'a':
       // 모두 처리
-
+			
       // 상세가져오기
-      foreach($rows as $row){
+      foreach($rows as $row){				
         $p=[
-          ['name'=>'I_ZBIDINV','value_string'=>$this->notinum],
-          ['name'=>'I_ZESTNUMM','value_string'=>$this->revision],
+          ['name'=>'I_ZBIDINV','value_string'=>$row['notinum']],
+          ['name'=>'I_ZESTNUMM','value_string'=>$row['revision']],
         ];
         $fn=['ZFUNCNM'=>'ZMME_EBID_INFO_0010'];
 
-        list($notinum,$revision)=explode('-',$this->notinum);				
+        list($notinum,$revision)=explode('-',$row['notinum']);				
 				$data=$this->getDetail($p,$fn);
 				
 				if($data!==null) {
 					if($data['bidproc_t']=='변경공고' and intval($revision)>0) {
-						echo "-----------------bid_m \n";					
+						echo "notinum : ".$row['notinum']."-----------------bid_m \n";					
 						$this->bid_m($data);
 					}else if($data['bidproc_t']=='취소공고' and intval($revision)>0) {
-						echo "-----------------bid_c \n";
+						echo "notinum : ".$row['notinum']."-----------------bid_c \n";
 						$this->bid_c($data);
-					}else if($data['bidproc_t']=='재공고') {
-						echo "-----------------bid_r \n";
-						$this->bid_r($data);
 					}else {					
-						echo "-----------------bid_b \n";
+						echo "notinum : ".$row['notinum']."-----------------bid_b \n";						
 						$this->bid_b($data);	
 					}
+				}else{
+					echo "\n--------data is null--------\n";
 				}	        
-        sleep(1);
+        sleep(5);
       }
       break;
     }
   }
 
   public function watch($callback){
+		
     while(true){
+			
       $list1=$this->searchSer();
-      $list2=$this->searchPur1();
+      $list2=$this->searchPur1();			
       //$list3=$this->searchPur2();
-      $rows=array_merge($list1,$list2/*,$list3*/);
-      foreach($rows as $row){
-        $p=[
-          ['name'=>'I_ZBIDINV','value_string'=>$this->notinum],
-          ['name'=>'I_ZESTNUMM','value_string'=>$this->revision],
-        ];
-        $fn=['ZFUNCNM'=>'ZMME_EBID_INFO_0010'];
-
-				list($notinum,$revision)=explode('-',$this->notinum);				
+      $rows=array_merge($list1,$list2/*,$list3*/);			
+			
+			foreach($rows as $row){				
+				$p=[
+					['name'=>'I_ZBIDINV','value_string'=>$row['notinum']],
+					['name'=>'I_ZESTNUMM','value_string'=>$row['revision']],
+				];
+				$fn=['ZFUNCNM'=>'ZMME_EBID_INFO_0010'];
+				
+				list($notinum,$revision)=explode('-',$row['notinum']);								
 				// 상세가져오기
-				$data=$this->getDetail($p,$fn);
-
+				$data=$this->getDetail($p,$fn);				
 				if($data!==null) {
 					if($data['bidproc_t']=='변경공고' and intval($revision)>0) {
-						echo "-----------------bid_m \n";					
+						echo "notinum : ".$row['notinum']."-----------------bid_m \n";					
 						$this->bid_m($data);
 					}else if($data['bidproc_t']=='취소공고' and intval($revision)>0) {
-						echo "-----------------bid_c \n";
+						echo "notinum : ".$row['notinum']."-----------------bid_c \n";
 						$this->bid_c($data);
-					}else if($data['bidproc_t']=='재공고') {
-						echo "-----------------bid_r \n";
-						$this->bid_r($data);
 					}else {					
-						echo "-----------------bid_b \n";
+						echo "notinum : ".$row['notinum']."-----------------bid_b \n";
 						$this->bid_b($data);	
-					}
-				}				
-
-        $callback($row);
-        sleep(1);
-      }
-      sleep(5);
+					}					
+				}								
+				//$callback($row);
+				sleep(20);
+			}
+      sleep(60);
     }
   }
 
@@ -159,17 +156,6 @@ class Crawler extends \djcp\korail\Crawler
     $fn=['ZFUNCNM'=>'ZMME_EBID_INFO_0010'];
 		
 		$data=$this->getDetail($p,$fn);
-
-		/*$p2=[					  						
-			['name'=>'I_ZZBIDINV','value_string'=>$row['notinum']],
-			['name'=>'I_ZZSTNUM','value_string'=>$row['revision']],			
-		];
-
-		$fn2=['ZFUNCNM'=>'ZMME_EBID_BIDD_0009'];
-		
-    $license=$this->getLicense($p2,$fn2);
-		*/
-		//print_r($data);
 		
     $answer=$callback($data);
 		switch($answer) {
@@ -177,18 +163,17 @@ class Crawler extends \djcp\korail\Crawler
     case 'y':
 			if($data!==null) {
 				if($data['bidproc_t']=='변경공고' and intval($revision)>0) {
-					echo "-----------------bid_m \n";					
+					echo "notinum : ".$data['notinum']."-----------------bid_m \n";					
 					$this->bid_m($data);
 				}else if($data['bidproc_t']=='취소공고' and intval($revision)>0) {
-					echo "-----------------bid_c \n";
+					echo "notinum : ".$data['notinum']."-----------------bid_c \n";
 					$this->bid_c($data);
-				}else if($data['bidproc_t']=='재공고') {
-					echo "-----------------bid_r \n";
-					$this->bid_r($data);
 				}else {					
-					echo "-----------------bid_b \n";
+					echo "notinum : ".$data['notinum']."-----------------bid_b \n";
 					$this->bid_b($data);	
 				}
+			}else{
+				echo "\n--------data is null--------\n";
 			}
 			break;
 		}
@@ -196,7 +181,7 @@ class Crawler extends \djcp\korail\Crawler
 
 	public function bid_m($data) {
 		list($notinum,$revision)=explode('-',$data['notinum']);
-		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'")->andWhere("state not in ('D')");
 		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
 		if($bidkey!==null) {
       list($notinum_p,$revision_p)=explode('-',$bidkey->notinum);
@@ -214,7 +199,7 @@ class Crawler extends \djcp\korail\Crawler
 	}
 	public function bid_c($data) {
 		list($notinum,$revision)=explode('-',$data['notinum']);
-		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'")->andWhere("state not in ('D')");
 		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
 		if($bidkey!==null and $bidkey->bidproc!='C') {
       list($a,$b,$c,$d)=explode('-',$bidkey->bidid);
@@ -229,7 +214,7 @@ class Crawler extends \djcp\korail\Crawler
 	}
 	public function bid_r($data) {
 		list($notinum,$revision)=explode('-',$data['notinum']);
-		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'")->andWhere("state not in ('D')");
 		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
 		if($bidkey!==null) {
 			list($a,$b,$c,$d)=explode('-',$bidkey->bidid);
@@ -249,7 +234,7 @@ class Crawler extends \djcp\korail\Crawler
 	}
 	public function bid_b($data) {
 		list($notinum,$revision)=explode('-',$data['notinum']);
-		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'");
+		$query=BidKey::find()->where(['whereis'=>'52',])->andWhere("notinum like '{$notinum}%'")->andWhere("state not in ('D')");
 		$bidkey=$query->orderBy('bidid desc')->limit(1)->one();
 		if($bidkey===null) {			
 			$data['bidid']=sprintf('%s%s-00-00-01',date('ymdHis'),str_pad(mt_rand(0,999),3,'0',STR_PAD_LEFT));
@@ -296,19 +281,23 @@ class Crawler extends \djcp\korail\Crawler
 
 				if(is_array($bidinfo['files'])){
 					foreach($bidinfo['files'] as $file){
-						$filename=str_replace('#','-',$file['filnm']).'#http://http://ebidn.korail.com:50000/file/fileDownload?doknr='.$file['doknr'].'&fileidx='.$file['flidx'];
+						$filename=str_replace('#','-',$file['filnm']).'#http://ebidn.korail.com:50000/file/fileDownload?doknr='.$file['doknr'].'&fileidx='.$file['flidx'];
 						$files[]=$filename;
 					}
 				}
-
-				$bidinfo['attchd_lnk']=join('|',$files);
+				if($files!==null){
+					$bidinfo['attchd_lnk']=join('|',$files);
+				}
 
       }else if($row['name']=='ET_ZSMMEEBID0004'){
         $d=$row['value'][0];
 
 				$bidinfo['bidproc_t']		=$d['zzbidinfo_t'];																											//공고정보(재공고,취소공고,변경공고
         $bidinfo['constnm']			=$d['description'];																											//입찰공고명
-        $bidinfo['bidtype']			=($d['zzbidtypecode']=='5')?'ser':'pur';																//물품(내자)=1,물품(외자)=9				
+        $bidinfo['bidtype']			=($d['zzbidtypecode']=='5')?'ser':'pur';																//물품(내자)=1,물품(외자)=9	
+				$bidinfo['bidview']			=($d['zzbidtypecode']=='5')?'ser':'pur';
+				$bidinfo['syscode']			=($d['zzbidtypecode']=='5')?'KRL_SB':'KRL_B';
+				$bidinfo['orign_lnk']		='http://ebidn.korail.com:50000/bid/goods/inBidDetail.jsp?p_gubun='.$d['zzbidtypecode'].'&zzbidinv='.$d['zzbidinv'].'&zzstnum='.$d['zzstnum'];
 				$bidinfo['notinum']			=$d['zzbidinv'];																												//입찰공고번호	
 				$bidinfo['old_notinum']	=$d['zzbidinv_old'];																										//기존공고번호(재공고,변경공고시)
 				//계약방법(1-일반경쟁,2-제한경쟁,4-수의계약)
@@ -337,7 +326,8 @@ class Crawler extends \djcp\korail\Crawler
 				$bidinfo['closedt']			=date('Y-m-d H:i:s',strtotime($d['zzbid_edat'].' '.$d['zzbid_etim']));			//입찰마감일시
 				$bidinfo['constdt']			=date('Y-m-d H:i:s',strtotime($d['zzopen_dat'].' '.$d['zzopen_tim']));			//개찰일시
 				$bidinfo['noticedt']		=date('Y-m-d H:i:s',strtotime($d['zzbid_erdat'].' '.$d['zzbid_ertim']));		//공고게시일
-				$bidinfo['agreedt']			=date('Y-m-d H:i:s',strtotime($d['zzbidappl_dat'].' '.$d['zzbidappl_tim']));//공동수급협정서 접수마감일시
+				$bidinfo['agreedt']			=date('Y-m-d H:i:s',strtotime($d['zzcomsub_dat'].' '.$d['zzcomsub_tim']));	//공동수급협정서 접수마감일시
+				$bidinfo['registdt']		=date('Y-m-d H:i:s',strtotime($d['zzbidappl_dat'].' '.$d['zzbidappl_tim']));//입찰참가자격 등록마감일시
 				$bidinfo['charger']			=$d['zzpernr_t'].'|'.$d['zztelno'];																					//담당자정보
 				$bidinfo['pct']					=$d['zzselrate'];																														//낙찰하한율
         
@@ -352,13 +342,16 @@ class Crawler extends \djcp\korail\Crawler
 				//state
 				$bidinfo['state']				= 'N';
 				$bidinfo['whereis']			= '52';
+				$bidinfo['org_i']				= '한국철도공사 회계통합센터';
         //
         //
         //
       }
     }
 
-    return $bidinfo;
+		if((strtotime($bidinfo['registdt'])-strtotime('2017-02-16'))>0) {
+			return $bidinfo;
+		}
   }
 
 	public function getLicense(array $p, array $fn) {
@@ -393,8 +386,13 @@ class Crawler extends \djcp\korail\Crawler
   public function searchSer(){
     $p=[];
     $p[]=['name'=>'I_ZZBIDTYPECODE','value_string'=>'5'];
-    $p[]=['name'=>'I_ERDAT_FR','value_string'=>$this->date1];
-    $p[]=['name'=>'I_ERDAT_TO','value_string'=>$this->date2];
+    if($this->mode=='search') {
+			$p[]=['name'=>'I_ERDAT_FR','value_string'=>$this->date1];
+			$p[]=['name'=>'I_ERDAT_TO','value_string'=>$this->date2];
+		}else if($this->mode=='watch') {
+			$p[]=['name'=>'I_ERDAT_FR','value_string'=>date('Ymd',strtotime('-60 day'))];
+			$p[]=['name'=>'I_ERDAT_TO','value_string'=>date('Ymd')];
+		}
     if($this->notinum) $p[]=['name'=>'I_ZZBIDINV','value_string'=>$this->notinum];
     $p=Json::encode($p);
     $fn=Json::encode(['ZFUNCNM'=>'ZMME_EBID_INFO_0009']);
@@ -420,8 +418,13 @@ class Crawler extends \djcp\korail\Crawler
   public function searchPur1(){
     $p=[];
     $p[]=['name'=>'I_ZZBIDTYPECODE','value_string'=>'1'];
-    $p[]=['name'=>'I_ERDAT_FR','value_string'=>$this->date1];
-    $p[]=['name'=>'I_ERDAT_TO','value_string'=>$this->date2];
+    if($this->mode=='search') {
+			$p[]=['name'=>'I_ERDAT_FR','value_string'=>$this->date1];
+			$p[]=['name'=>'I_ERDAT_TO','value_string'=>$this->date2];
+		}else if($this->mode=='watch') {
+			$p[]=['name'=>'I_ERDAT_FR','value_string'=>date('Ymd',strtotime('-60 day'))];
+			$p[]=['name'=>'I_ERDAT_TO','value_string'=>date('Ymd')];
+		}
     if($this->notinum) $p[]=['name'=>'I_ZZBIDINV','value_string'=>$this->notinum];
     $p=Json::encode($p);
     $fn=Json::encode(['ZFUNCNM'=>'ZMME_EBID_INFO_0009']);
@@ -447,8 +450,13 @@ class Crawler extends \djcp\korail\Crawler
   public function searchPur2(){
     $p=[];
     $p[]=['name'=>'I_ZZBIDTYPECODE','value_string'=>'9'];
-    $p[]=['name'=>'I_ERDAT_FR','value_string'=>$this->date1];
-    $p[]=['name'=>'I_ERDAT_TO','value_string'=>$this->date2];
+    if($this->mode=='search') {
+			$p[]=['name'=>'I_ERDAT_FR','value_string'=>$this->date1];
+			$p[]=['name'=>'I_ERDAT_TO','value_string'=>$this->date2];
+		}else if($this->mode=='watch') {
+			$p[]=['name'=>'I_ERDAT_FR','value_string'=>date('Ymd',strtotime('-60 day'))];
+			$p[]=['name'=>'I_ERDAT_TO','value_string'=>date('Ymd')];
+		}
     if($this->notinum) $p[]=['name'=>'I_ZZBIDINV','value_string'=>$this->notinum];
     $p=Json::encode($p);
     $fn=Json::encode(['ZFUNCNM'=>'ZMME_EBID_INFO_0009']);

@@ -5,8 +5,7 @@ use Yii;
 use yii\base\InlineAction;
 
 class CrawlerController extends \yii\console\Controller
-{
-  public $module;
+{  
   public $crawlers=[];
   private $_options=[];
 

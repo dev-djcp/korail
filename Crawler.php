@@ -12,7 +12,7 @@ abstract class Crawler extends \yii\base\Model
 	public $module;
 
   protected $http;
-  protected $base_uri='http://ebidn.korail.com:50000';
+  protected $base_uri='http://ebid.korail.com';
 
   public function init(){
     parent::init();
@@ -73,6 +73,12 @@ abstract class Crawler extends \yii\base\Model
   public function get($uri,array $query=[]){
     $body=$this->request('GET',$uri,['query'=>$query]);
     return Json::decode($body);
+  }
+
+  public function post($uri,array $options=[]){
+    $body=$this->request('POST',$uri,$options);
+    return Json::decode($body);
+		
   }
 }
 
